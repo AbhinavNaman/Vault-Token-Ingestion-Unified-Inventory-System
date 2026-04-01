@@ -11,10 +11,17 @@ router.get("/", async (req, res) => {
   const highRisk = await prisma.secret.count({
     where: { ttl: null }
   })
+  const revokedSecrets = await prisma.secret.count({
+    where: { status: "revoked" }
+  })
+
+  const totalTokens = await prisma.token.count()
   res.json({
     totalSecrets: total,
     expiredSecrets: expired,
-    highRiskSecrets: highRisk
+    highRiskSecrets: highRisk,
+    revokedSecrets: revokedSecrets,
+    totalTokens: totalTokens
   })
 })
 
