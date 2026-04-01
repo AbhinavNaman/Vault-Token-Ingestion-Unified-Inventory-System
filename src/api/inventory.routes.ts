@@ -4,13 +4,30 @@ import { prisma } from "../db/prismaClient.ts"
 const router = Router()
 
 router.get("/", async (req, res) => {
-  const { providerId } = req.query
+
+  const {
+    providerId,
+    status,
+    path,
+    page = "1",
+    limit = "20"
+  } = req.query
+
   const secrets = await prisma.secret.findMany({
+
     where: {
-      ...(providerId && { providerId: providerId as string })
-    }
+      ...(providerId && { providerId: providerId as string }),
+      ...(status && { status: status as string }),
+      ...(path && { path: { contains: path as string } })
+    },
+
+    take: Number(limit),
+    skip: (Number(page) - 1) * Number(limit)
+
   })
+
   res.json(secrets)
+
 })
 
 router.get("/:id", async (req, res) => {
