@@ -7,23 +7,24 @@ datasource db {
 }
 
 model Provider {
-  id        String   @id @default(uuid())
-  name      String
-  type      String
+  id   String @id @default(uuid())
+  name String
+  type String
 
   vaultAddr String
   token     String
   mountPath String
 
-  secrets   Secret[]
+  secrets Secret[]
 
   createdAt DateTime @default(now())
+  tokens    Token[]
 }
 
 model Secret {
-  id           String   @id @default(uuid())
-  providerId   String
-  provider     Provider @relation(fields: [providerId], references: [id])
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
 
   path         String
   version      Int?
@@ -37,4 +38,19 @@ model Secret {
   lastSyncedAt DateTime
 
   @@unique([providerId, path])
+}
+
+model Token {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  accessor    String
+  policies    String[]
+  ttl         Int?
+  createdTime DateTime?
+  lastAccess  DateTime?
+  status      String
+
+  lastSyncedAt DateTime
 }
