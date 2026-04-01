@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Provider {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+
+  vaultAddr String
+  token     String
+  mountPath String
+
+  secrets   Secret[]
+
+  createdAt DateTime @default(now())
+}
+
+model Secret {
+  id           String   @id @default(uuid())
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+
+  path         String
+  version      Int?
+  ttl          Int?
+  createdTime  DateTime?
+  lastAccessed DateTime?
+  owner        String?
+  status       String
+  riskScore    Int?
+
+  lastSyncedAt DateTime
+
+  @@unique([providerId, path])
+}
