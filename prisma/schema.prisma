@@ -45,7 +45,7 @@ model Token {
   providerId String
   provider   Provider @relation(fields: [providerId], references: [id])
 
-  accessor    String
+  accessor    String   @unique
   policies    String[]
   ttl         Int?
   createdTime DateTime?
