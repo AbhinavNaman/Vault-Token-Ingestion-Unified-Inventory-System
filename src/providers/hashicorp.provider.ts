@@ -1,5 +1,5 @@
 import axios from "axios"
-import type { VaultProvider, SecretData } from "./provider.interface.ts"
+import type { VaultProvider, SecretData, TokenData } from "./provider.interface.ts"
 import { logger } from "../utils/logger.ts"
 
 export class HashicorpProvider implements VaultProvider {
@@ -84,19 +84,23 @@ export class HashicorpProvider implements VaultProvider {
         })
 
         const metadata = res.data?.data
-
-        return {
+        const secret: SecretData = {
             path: `${this.rootPath}/${secretPath}`,
             version: metadata?.current_version,
-            createdTime: metadata?.created_time
-                ? new Date(metadata.created_time)
-                : undefined
+            ttl: metadata?.ttl,
+            owner: metadata?.created_by
         }
+
+        if (metadata?.created_time) {
+            secret.createdTime = new Date(metadata.created_time)
+        }
+
+        return secret
     }
 
-    async fetchTokens() {
+    async fetchTokens(): Promise<TokenData[]> {
 
-        const tokens = []
+        const tokens: TokenData[] = []
 
         const res = await axios.get(
             `${this.baseUrl}/v1/auth/token/accessors`,
@@ -114,15 +118,17 @@ export class HashicorpProvider implements VaultProvider {
             )
 
             const data = lookup.data.data
-
-            tokens.push({
+            const tokenData: TokenData = {
                 accessor,
                 policies: data.policies,
-                ttl: data.ttl,
-                createdTime: data.creation_time
-                    ? new Date(data.creation_time * 1000)
-                    : undefined
-            })
+                ttl: data.ttl
+            }
+
+            if (data.creation_time) {
+                tokenData.createdTime = new Date(data.creation_time * 1000)
+            }
+
+            tokens.push(tokenData)
         }
 
         return tokens
