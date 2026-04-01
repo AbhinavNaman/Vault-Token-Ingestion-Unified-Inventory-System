@@ -20,40 +20,105 @@ export class IngestionService {
 
       const vaultPaths = new Set(secrets.map(s => s.path))
 
+      // for (const secret of secrets) {
+
+      //   const updateData: any = {
+      //     lastSyncedAt: new Date(),
+      //     status: "active"
+      //   }
+      //   if (secret.version !== undefined) {
+      //     updateData.version = secret.version
+      //   }
+
+      //   const createData: any = {
+      //     providerId: provider.id,
+      //     path: secret.path,
+      //     status: "active",
+      //     lastSyncedAt: new Date()
+      //   }
+      //   if (secret.version !== undefined) {
+      //     createData.version = secret.version
+      //   }
+
+      //   await prisma.secret.upsert({
+
+      //     where: {
+      //       providerId_path: {
+      //         providerId: provider.id,
+      //         path: secret.path
+      //       }
+      //     },
+
+      //     update: updateData,
+
+      //     create: createData
+
+      //   })
+      // }
+
       for (const secret of secrets) {
 
-        const updateData: any = {
-          lastSyncedAt: new Date(),
-          status: "active"
-        }
-        if (secret.version !== undefined) {
-          updateData.version = secret.version
-        }
-
-        const createData: any = {
-          providerId: provider.id,
-          path: secret.path,
-          status: "active",
-          lastSyncedAt: new Date()
-        }
-        if (secret.version !== undefined) {
-          createData.version = secret.version
-        }
-
-        await prisma.secret.upsert({
-
+        const existingSecret = await prisma.secret.findUnique({
           where: {
             providerId_path: {
               providerId: provider.id,
               path: secret.path
             }
-          },
-
-          update: updateData,
-
-          create: createData
-
+          }
         })
+
+        if (!existingSecret) {
+
+          const createData: any = {
+            providerId: provider.id,
+            path: secret.path,
+            status: "active",
+            lastSyncedAt: new Date()
+          }
+
+          if (secret.version !== undefined) {
+            createData.version = secret.version
+          }
+
+          if (secret.createdTime !== undefined) {
+            createData.createdTime = secret.createdTime
+          }
+
+          await prisma.secret.create({
+            data: createData
+          })
+
+        } else {
+
+            // Incremental sync: Only update if metadata changed
+
+          if (
+            secret.createdTime &&
+            secret.createdTime > existingSecret.lastSyncedAt
+          ) {
+
+            const updateData: any = {
+              lastSyncedAt: new Date(),
+              status: "active"
+            }
+
+            if (secret.version !== undefined) {
+              updateData.version = secret.version
+            }
+
+            if (secret.createdTime !== undefined) {
+              updateData.createdTime = secret.createdTime
+            }
+
+            await prisma.secret.update({
+              where: { id: existingSecret.id },
+              data: updateData
+            })
+
+          }
+
+        }
+
       }
 
       const dbSecrets = await prisma.secret.findMany({
@@ -73,7 +138,7 @@ export class IngestionService {
 
       try {
         const tokens = await vault.fetchTokens()
-        
+
         for (const token of tokens) {
 
           await prisma.token.upsert({
