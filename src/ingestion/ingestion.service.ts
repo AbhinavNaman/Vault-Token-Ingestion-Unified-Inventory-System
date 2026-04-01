@@ -6,9 +6,10 @@ export class IngestionService {
 
   async syncAllProviders() {
     const providers = await prisma.provider.findMany()
-    
+
     for (const provider of providers) {
       logger.info(`Syncing provider ${provider.name}`)
+
       const vault = new HashicorpProvider(
         provider.vaultAddr,
         provider.token,
@@ -69,6 +70,44 @@ export class IngestionService {
           })
         }
       }
+
+      try {
+        const tokens = await vault.fetchTokens()
+        
+        for (const token of tokens) {
+
+          await prisma.token.upsert({
+
+            where: {
+              accessor: token.accessor
+            },
+
+            update: {
+              ttl: token.ttl ?? null,
+              lastSyncedAt: new Date()
+            },
+
+            create: {
+              providerId: provider.id,
+              accessor: token.accessor,
+              policies: token.policies,
+              ttl: token.ttl ?? null,
+              createdTime: token.createdTime ?? null,
+              status: "active",
+              lastSyncedAt: new Date()
+            }
+
+          })
+
+        }
+      } catch (err) {
+        logger.warn("Token ingestion skipped due to permissions")
+      }
+
+
+      logger.info(`Finished syncing provider ${provider.name}`)
+
     }
+
   }
 }
