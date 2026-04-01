@@ -93,6 +93,40 @@ export class HashicorpProvider implements VaultProvider {
                 : undefined
         }
     }
+
+    async fetchTokens() {
+
+        const tokens = []
+
+        const res = await axios.get(
+            `${this.baseUrl}/v1/auth/token/accessors`,
+            { headers: { "X-Vault-Token": this.token } }
+        )
+
+        const accessors = res.data.data.keys
+
+        for (const accessor of accessors) {
+
+            const lookup = await axios.post(
+                `${this.baseUrl}/v1/auth/token/lookup-accessor`,
+                { accessor },
+                { headers: { "X-Vault-Token": this.token } }
+            )
+
+            const data = lookup.data.data
+
+            tokens.push({
+                accessor,
+                policies: data.policies,
+                ttl: data.ttl,
+                createdTime: data.creation_time
+                    ? new Date(data.creation_time * 1000)
+                    : undefined
+            })
+        }
+
+        return tokens
+    }
 }
 
 // async getSecretValue(path: string) {
